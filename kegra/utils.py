@@ -5,10 +5,12 @@ import numpy as np
 from scipy.sparse.linalg.eigen.arpack import eigsh, ArpackNoConvergence
 
 
-def encode_onehot(labels):
+def     encode_onehot(labels):
+    print("I am in")
     classes = set(labels)
     classes_dict = {c: np.identity(len(classes))[i, :] for i, c in enumerate(classes)}
     labels_onehot = np.array(list(map(classes_dict.get, labels)), dtype=np.int32)
+    print("apple")
     return labels_onehot
 
 
@@ -17,13 +19,18 @@ def load_data(path="data/cora/", dataset="cora"):
     print('Loading {} dataset...'.format(dataset))
 
     idx_features_labels = np.genfromtxt("{}{}.content".format(path, dataset), dtype=np.dtype(str))
-    features = sp.csr_matrix(idx_features_labels[:, 1:-1], dtype=np.float32)
+    feature_length = idx_features_labels.shape[-1] - 2
+    if(feature_length>0):
+        features = sp.csr_matrix(idx_features_labels[:, 1:-1], dtype=np.float32)
+    else:
+        features = sp.identity(idx_features_labels.shape[0]).tocsr()
     labels = encode_onehot(idx_features_labels[:, -1])
 
     # build graph
     idx = np.array(idx_features_labels[:, 0], dtype=np.int32)
     idx_map = {j: i for i, j in enumerate(idx)}
     edges_unordered = np.genfromtxt("{}{}.cites".format(path, dataset), dtype=np.int32)
+    edges_unordered = np.asarray(list(filter(lambda x: (x[0] in idx_map and x[1] in idx_map), edges_unordered)))
     edges = np.array(list(map(idx_map.get, edges_unordered.flatten())),
                      dtype=np.int32).reshape(edges_unordered.shape)
     adj = sp.coo_matrix((np.ones(edges.shape[0]), (edges[:, 0], edges[:, 1])),

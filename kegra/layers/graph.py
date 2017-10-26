@@ -8,6 +8,7 @@ import keras.backend as K
 
 class GraphConvolution(Layer):
     """TODO: Docstring"""
+
     def __init__(self, output_dim, support=1, init='glorot_uniform',
                  activation='linear', weights=None, W_regularizer=None,
                  b_regularizer=None, bias=False, **kwargs):

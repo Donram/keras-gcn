@@ -1,5 +1,11 @@
 from __future__ import print_function
 
+import os
+from sys import path
+import time
+
+path.insert(0, os.path.join(os.getcwd(), "../"))
+
 from keras.layers import Input, Dropout
 from keras.models import Model
 from keras.optimizers import Adam
@@ -8,17 +14,20 @@ from keras.regularizers import l2
 from kegra.layers.graph import GraphConvolution
 from kegra.utils import *
 
-import time
+
 
 # Define parameters
-DATASET = 'cora'
+DATASET = 'blogcatalog'
+# DATASET = 'cora'
 FILTER = 'localpool'  # 'chebyshev'
-MAX_DEGREE = 2  # maximum polynomial degree
+# FILTER = 'chebyshev'
+MAX_DEGREE = 2  # maximum polynomial degree. Note that this parameter is used only when chebyshev filter is used
 SYM_NORM = True  # symmetric (True) vs. left-only (False) normalization
 NB_EPOCH = 200
-PATIENCE = 10  # early stopping patience
+PATIENCE = 100  # early stopping patience
 
 # Get data
+
 X, A, y = load_data(dataset=DATASET)
 y_train, y_val, y_test, idx_train, idx_val, idx_test, train_mask = get_splits(y)
 
@@ -40,7 +49,7 @@ elif FILTER == 'chebyshev':
     L_scaled = rescale_laplacian(L)
     T_k = chebyshev_polynomial(L_scaled, MAX_DEGREE)
     support = MAX_DEGREE + 1
-    graph = [X]+T_k
+    graph = [X] + T_k
     G = [Input(shape=(None, None), batch_shape=(None, None), sparse=True) for _ in range(support)]
 
 else:
@@ -52,12 +61,12 @@ X_in = Input(shape=(X.shape[1],))
 # NOTE: We pass arguments for graph convolutional layers as a list of tensors.
 # This is somewhat hacky, more elegant options would require rewriting the Layer base class.
 H = Dropout(0.5)(X_in)
-H = GraphConvolution(16, support, activation='relu', W_regularizer=l2(5e-4))([H]+G)
+H = GraphConvolution(16, support, activation='relu', W_regularizer=l2(5e-4))([H] + G)
 H = Dropout(0.5)(H)
-Y = GraphConvolution(y.shape[1], support, activation='softmax')([H]+G)
+Y = GraphConvolution(y.shape[1], support, activation='softmax')([H] + G)
 
 # Compile model
-model = Model(inputs=[X_in]+G, outputs=Y)
+model = Model(inputs=[X_in] + G, outputs=Y)
 model.compile(loss='categorical_crossentropy', optimizer=Adam(lr=0.01))
 
 # Helper variables for main training loop
@@ -66,7 +75,7 @@ preds = None
 best_val_loss = 99999
 
 # Fit
-for epoch in range(1, NB_EPOCH+1):
+for epoch in range(1, NB_EPOCH + 1):
 
     # Log wall-clock time
     t = time.time()
